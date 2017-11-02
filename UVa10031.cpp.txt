@@ -1,0 +1,148 @@
+#include <iostream>
+#include <sstream>
+#include <string>
+#include <vector>
+#include <algorithm>
+#include <math.h>
+
+using namespace std;
+// struct YValue{
+//     bool isInt=false;
+//     int YValue=0;
+//     double approx=0.0;
+// }
+int gcd(int a,int b){
+    if(b>a)
+        swap(a,b);
+    return b==0?a:gcd(b,a%b);
+}
+
+void insertSegments(int x,double a,double b,vector<vector<int>>& segments){
+    if(abs(a-round(a))<1e-7)
+        segments[x].push_back((int)round(a));
+    else
+        segments[x].push_back((int)ceil(a));
+    if(abs(b-round(b))<1e-7)
+        segments[x].push_back((int)round(b));
+    else
+        segments[x].push_back((int)floor(b));
+}
+
+bool inside(int x,double y,vector<vector<int>>& coords){
+    int numTimesHit=0;
+    for(int i=0;i<coords.size()-1;i++){
+        if(coords[i][1]==coords[i+1][1]){
+            if(abs(coords[i][1]-y)>1e-7)
+                continue;//two parallel lines
+            else if(x>=min(coords[i][0],coords[i+1][0]) &&
+                    x<=max(coords[i][0],coords[i+1][0]))
+                return true; //point is on the line
+            else
+                continue;
+        }
+        double tx=(double)(y-coords[i][1])*(coords[i+1][0]-coords[i][0])/
+                  (coords[i+1][1]-coords[i][1])+coords[i][0];
+        if(tx>=min(coords[i][0],coords[i+1][0]) &&
+           tx<=max(coords[i][0],coords[i+1][0])){
+            if(abs(tx-x)<1e-7)
+                return true;
+            else if(tx>x)
+                numTimesHit++;
+        }
+    }return numTimesHit&1?true:false;
+}
+
+void getArea(vector<vector<int>>& coords){
+    coords.push_back(coords[0]);
+    vector<vector<double>> xaxis(100001);
+    vector<bool> hasBorder(100001,false);
+    int pre_dx=coords[coords.size()-1][0]-coords[coords.size()-2][0];
+    
+    // the points on the border of the polygon where x is an int are recorded
+    // only exception is when that point is a vertex pre_dx*dx<0
+    for(int i=0;i<coords.size()-1;i++){
+        int dx=coords[i+1][0]-coords[i][0];
+        if(dx==0){
+            xaxis[coords[i][0]].push_back(coords[i][1]);
+            hasBorder[coords[i][0]]=true;
+        }else{
+            if(dx*pre_dx>=0){
+                xaxis[coords[i][0]].push_back(coords[i][1]);
+            }
+            int dy=coords[i+1][1]-coords[i][1];
+            if(dx>0){
+                for(int j=1;j<dx;j++){
+                    xaxis[j+coords[i][0]].push_back(coords[i][1]+(double)j*dy/dx);
+                }
+            }else{
+                for(int j=-1;j>dx;j--){
+                    xaxis[j+coords[i][0]].push_back(coords[i][1]+(double)j*dy/dx);
+                }
+            }
+        }
+        pre_dx=dx;
+    }
+    
+    vector<vector<int>> segments(100001);
+    for(int i=0;i<xaxis.size();i++){
+        if(xaxis[i].size()==0)
+            continue;
+        else if(xaxis[i].size()==1){
+            cout<<"error"<<endl;
+            continue;
+        }
+        sort(xaxis[i].begin(),xaxis[i].end());
+        if(hasBorder[i]){
+            for(int j=0;j<xaxis[i].size()-1;j++){
+                double mid=(xaxis[i][j]+xaxis[i][j+1])/2;
+                if(inside(i,mid,coords)){
+                    insertSegments(i,xaxis[i][j],xaxis[i][j+1],segments);
+                }
+            }
+        }else{
+            for(int j=0;j<xaxis[i].size()-1;j+=2)
+                insertSegments(i,xaxis[i][j],xaxis[i][j+1],segments);
+        }
+    }
+    
+    
+    long long ans=0;
+    for(int i=0;i<segments.size()-1;i++){
+        for(int j=0,k=0;j<segments[i].size() && k<segments[i+1].size();){
+            if(segments[i][j]>=segments[i+1][k+1])
+                k+=2;
+            else if(segments[i][j+1]<=segments[i+1][k])
+                j+=2;
+            else{
+                ans+=min(segments[i][j+1],segments[i+1][k+1])-max(segments[i][j],segments[i+1][k]);
+                if(segments[i][j+1]<segments[i+1][k+1])
+                    j+=2;
+                else if(segments[i][j+1]>segments[i+1][k+1])
+                    k+=2;
+                else{
+                    j+=2; k+=2;
+                }
+            }
+        }
+    }cout<<ans<<endl;
+}
+int main(){
+    int cases;
+    string input;
+    cin>>cases;
+    getline(cin,input);
+    getline(cin,input);
+    while(cases--){
+        vector<vector<int>> coords;
+        while(getline(cin,input)){
+            if(input=="") break;
+            istringstream twoInts (input);
+            int a,b;
+            twoInts>>a>>b;
+            coords.push_back(vector<int>{a,b});
+        }
+        getArea(coords);
+        if(cases!=0) cout<<endl;
+    }
+    return 0;
+}
